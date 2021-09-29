@@ -13,6 +13,5 @@ func main() {
 	r.GET("/task/:id", todolist.GetTask)
 	r.POST("/task", todolist.AddTask)
 	r.DELETE("/task/:id", todolist.DeleteTask)
-
 	r.Run(":8080")
 }

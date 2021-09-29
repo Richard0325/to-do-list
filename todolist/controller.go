@@ -10,9 +10,17 @@ import (
 
 var dao Dao
 
+func GenResponse(data interface{}) map[string]interface{}{
+	return map[string]interface{}{
+		"msg": "",
+		"data": data,
+	}
+}
+
 func Init() {
 	// dao = InitDao(MemoryDaoType, 50)
-	dao = InitDao(MariaDaoType, 50)
+	// dao = InitDao(MariaDaoType, 50)
+	dao = InitDao(MongoDaoType, 50)
 }
 
 func GetTasks(c *gin.Context) {
@@ -23,7 +31,7 @@ func GetTasks(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, data)
+	c.JSON(http.StatusOK, GenResponse(data))
 }
 
 func GetTask(c *gin.Context) {
@@ -48,7 +56,7 @@ func GetTask(c *gin.Context) {
 		}
 		return
 	}
-	c.JSON(http.StatusOK, data)
+	c.JSON(http.StatusOK, GenResponse(data))
 }
 
 func AddTask(c *gin.Context) {
@@ -69,7 +77,7 @@ func AddTask(c *gin.Context) {
 		return
 	}
 	t.ID = id
-	c.JSON(http.StatusOK, t)
+	c.JSON(http.StatusOK, GenResponse(t))
 }
 
 func DeleteTask(c *gin.Context) {
