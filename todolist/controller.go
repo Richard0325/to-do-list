@@ -3,8 +3,6 @@ package todolist
 import (
 	"fmt"
 	"net/http"
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,19 +14,51 @@ func GenResponse(data interface{}) map[string]interface{}{
 		"data": data,
 	}
 }
+type httpErrResponseType int
+var httpErrNotFound httpErrResponseType = 1
+var httpErrBadRequest httpErrResponseType = 2
+var httpErrOthers httpErrResponseType = 3
+func GenErrResponse(c *gin.Context, err error, errType httpErrResponseType){
+	switch errType{
+	case httpErrNotFound:
+		c.JSON(http.StatusNotFound, map[string]string{
+			"error": err.Error(),
+		})
+	case httpErrBadRequest:
+		c.JSON(http.StatusBadRequest, map[string]string{
+			"error": fmt.Sprintf("JSON parse error: %s", err.Error()),
+		})
+	case httpErrOthers:
+		c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+	}
+	return
+}
 
-func Init() {
-	// dao = InitDao(MemoryDaoType, 50)
-	// dao = InitDao(MariaDaoType, 50)
-	dao = InitDao(MongoDaoType, 50)
+func Init(dbType int, size int) {
+	switch dbType{
+	case 1:
+		dao = InitDao(MemoryDaoType, size)
+		fmt.Println("Memory is using now")
+	case 2:
+		dao = InitDao(MariaDaoType, size)
+		fmt.Println("MariaDB is using now")
+	case 3:
+		dao = InitDao(MongoDaoType, size)
+		fmt.Println("MongoDB is using now")
+	default:
+		fmt.Println("invalid type, Default type(Memory) is using now")
+	}
 }
 
 func GetTasks(c *gin.Context) {
 	data, err := dao.GetTasks()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
+		// c.JSON(http.StatusInternalServerError, map[string]string{
+		// 	"error": err.Error(),
+		// })
+		GenErrResponse(c, err, httpErrOthers)
 		return
 	}
 	c.JSON(http.StatusOK, GenResponse(data))
@@ -36,23 +66,18 @@ func GetTasks(c *gin.Context) {
 
 func GetTask(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]string{
-			"error": fmt.Sprintf("ID error: %s", err.Error()),
-		})
-		return
-	}
-	data, err := dao.GetTask(int(id))
+	data, err := dao.GetTask(idStr)
 	if err != nil {
 		if err == ErrNotFound {
-			c.JSON(http.StatusNotFound, map[string]string{
-				"error": err.Error(),
-			})
+			// c.JSON(http.StatusNotFound, map[string]string{
+			// 	"error": err.Error(),
+			// })
+			GenErrResponse(c, err, httpErrNotFound)
 		} else {
-			c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": err.Error(),
-			})
+			// c.JSON(http.StatusInternalServerError, map[string]string{
+			// 	"error": err.Error(),
+			// })
+			GenErrResponse(c, err, httpErrOthers)
 		}
 		return
 	}
@@ -63,17 +88,19 @@ func AddTask(c *gin.Context) {
 	t := Task{}
 	err := c.BindJSON(&t)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]string{
-			"error": fmt.Sprintf("JSON parse error: %s", err.Error()),
-		})
+		// c.JSON(http.StatusBadRequest, map[string]string{
+		// 	"error": fmt.Sprintf("JSON parse error: %s", err.Error()),
+		// })
+		GenErrResponse(c, err, httpErrBadRequest)
 		return
 	}
 
 	id, err := dao.AddTask(&t)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
+		// c.JSON(http.StatusInternalServerError, map[string]string{
+		// 	"error": err.Error(),
+		// })
+		GenErrResponse(c, err, httpErrOthers)
 		return
 	}
 	t.ID = id
@@ -82,18 +109,12 @@ func AddTask(c *gin.Context) {
 
 func DeleteTask(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 32)
+	err := dao.DeleteTask(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]string{
-			"error": fmt.Sprintf("ID error: %s", err.Error()),
-		})
-		return
-	}
-	err = dao.DeleteTask(int(id))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
+		// c.JSON(http.StatusInternalServerError, map[string]string{
+		// 	"error": err.Error(),
+		// })
+		GenErrResponse(c, err, httpErrOthers)
 	}
 	c.JSON(http.StatusOK, map[string]string{})
 }

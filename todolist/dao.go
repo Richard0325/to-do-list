@@ -4,18 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
-	"log"
+	"strconv"
 	_ "github.com/go-sql-driver/mysql"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 type Dao interface {
 	GetTasks() (Tasks, error)
-	GetTask(int) (*Task, error)
-	AddTask(*Task) (int, error)
-
-	DeleteTask(int) error
+	GetTask(string) (*Task, error)
+	AddTask(*Task) (string, error)
+	DeleteTask(string) error
 }
 
 var ListSize int
@@ -41,7 +39,7 @@ func InitDao(daoT DaoType, size int) Dao {
 	case MariaDaoType:
 		conn, err := sql.Open("mysql", "root:bearathome@tcp(minecraft.litttlebear.tw:11100)/Richard")
 		if err != nil {
-			fmt.Printf("SQL init fail %s", err.Error())
+			panic("MariaDB init error")
 			return nil
 		}
 		return &MariaDao{
@@ -56,8 +54,7 @@ func InitDao(daoT DaoType, size int) Dao {
 			SetAuth(credential)
 		client, err := mongo.Connect(context.TODO(), clientOpts)
 		if err != nil {
-			fmt.Println("error")
-			log.Fatal(err)
+			panic("MongoDB init error")
 		}
 		collection := client.Database("richard").Collection("todolist")
 		return &MongoDao{
@@ -80,7 +77,8 @@ func (m MemoryDao) GetTasks() (Tasks, error) {
 	return ret, nil
 }
 
-func (m MemoryDao) GetTask(id int) (*Task, error) {
+func (m MemoryDao) GetTask(idStr string) (*Task, error) {
+	id , _ :=strconv.Atoi(idStr)
 	if task, ok := m.data[id]; ok {
 		return task, nil
 	}
@@ -89,9 +87,9 @@ func (m MemoryDao) GetTask(id int) (*Task, error) {
 
 const maxInt = int(^uint(0) >> 1)
 
-func (m *MemoryDao) AddTask(task *Task) (int, error) {
+func (m *MemoryDao) AddTask(task *Task) (string, error) {
 	if len(m.data) == ListSize {
-		return -1, ErrNoSpace
+		return "-1", ErrNoSpace
 	}
 	id := m.maxID
 	if m.maxID == maxInt {
@@ -101,10 +99,12 @@ func (m *MemoryDao) AddTask(task *Task) (int, error) {
 		m.maxID++
 	}
 	m.data[id] = task
-	return id, nil
+	idStr:= strconv.Itoa(id)
+	return idStr, nil
 }
 
-func (m MemoryDao) DeleteTask(id int) error {
+func (m MemoryDao) DeleteTask(idStr string) error {
+	id, _:= strconv.Atoi(idStr)
 	delete(m.data, id)
 	return nil
 }
