@@ -2,6 +2,7 @@ package todolist
 
 import (
 	"fmt"
+	"errors"
 	"net/http"
 	"github.com/gin-gonic/gin"
 )
@@ -36,28 +37,31 @@ func GenErrResponse(c *gin.Context, err error, errType httpErrResponseType){
 	return
 }
 
-func Init(dbType int, size int) {
+var ErrInvalidArg error = errors.New("Invalid Argument")
+
+func Init(dbType int, size int) error{
 	switch dbType{
 	case 1:
 		dao = InitDao(MemoryDaoType, size)
 		fmt.Println("Memory is using now")
+		return nil
 	case 2:
 		dao = InitDao(MariaDaoType, size)
 		fmt.Println("MariaDB is using now")
+		return nil
 	case 3:
 		dao = InitDao(MongoDaoType, size)
 		fmt.Println("MongoDB is using now")
+		return nil
 	default:
-		fmt.Println("invalid type, Default type(Memory) is using now")
+		fmt.Println("invalid DB type")
+		return ErrInvalidArg
 	}
 }
 
 func GetTasks(c *gin.Context) {
 	data, err := dao.GetTasks()
 	if err != nil {
-		// c.JSON(http.StatusInternalServerError, map[string]string{
-		// 	"error": err.Error(),
-		// })
 		GenErrResponse(c, err, httpErrOthers)
 		return
 	}
@@ -69,14 +73,8 @@ func GetTask(c *gin.Context) {
 	data, err := dao.GetTask(idStr)
 	if err != nil {
 		if err == ErrNotFound {
-			// c.JSON(http.StatusNotFound, map[string]string{
-			// 	"error": err.Error(),
-			// })
 			GenErrResponse(c, err, httpErrNotFound)
 		} else {
-			// c.JSON(http.StatusInternalServerError, map[string]string{
-			// 	"error": err.Error(),
-			// })
 			GenErrResponse(c, err, httpErrOthers)
 		}
 		return
@@ -88,18 +86,12 @@ func AddTask(c *gin.Context) {
 	t := Task{}
 	err := c.BindJSON(&t)
 	if err != nil {
-		// c.JSON(http.StatusBadRequest, map[string]string{
-		// 	"error": fmt.Sprintf("JSON parse error: %s", err.Error()),
-		// })
 		GenErrResponse(c, err, httpErrBadRequest)
 		return
 	}
 
 	id, err := dao.AddTask(&t)
 	if err != nil {
-		// c.JSON(http.StatusInternalServerError, map[string]string{
-		// 	"error": err.Error(),
-		// })
 		GenErrResponse(c, err, httpErrOthers)
 		return
 	}
@@ -110,10 +102,9 @@ func AddTask(c *gin.Context) {
 func DeleteTask(c *gin.Context) {
 	idStr := c.Param("id")
 	err := dao.DeleteTask(idStr)
-	if err != nil {
-		// c.JSON(http.StatusInternalServerError, map[string]string{
-		// 	"error": err.Error(),
-		// })
+	if err == ErrInvalidInput {
+		GenErrResponse(c, err, httpErrBadRequest)
+	}else{
 		GenErrResponse(c, err, httpErrOthers)
 	}
 	c.JSON(http.StatusOK, map[string]string{})

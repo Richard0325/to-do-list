@@ -15,13 +15,6 @@ type MongoDao struct {
 	maxID int
 }
 
-type MongoTask struct{
-	ID          primitive.ObjectID `bson:"_id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Deadline    int    `json:"deadline"`
-}
-
 func (dao MongoDao) GetTasks() (Tasks, error) {
 	cur, err := dao.Coll.Find(context.TODO(), bson.D{})
 	if err != nil {
@@ -30,17 +23,14 @@ func (dao MongoDao) GetTasks() (Tasks, error) {
 	}
 	ret := []*Task{}
 	for cur.Next(context.Background()) {
-		mt := MongoTask{}
-		err := cur.Decode(&mt)
+		t:= Task{}
+		err := cur.Decode(&t)
 		if err != nil {
 			fmt.Println("Decode error")
 			return nil, err
 		}
-		t := Task{}
-		t.ID = mt.ID.Hex()
-		t.Title = mt.Title
-		t.Description = mt.Description
-		t.Deadline = mt.Deadline
+		t.ID = t.MongoID.Hex()
+
 		ret = append(ret, &t)
 	}
 	return ret, nil

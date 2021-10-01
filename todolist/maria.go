@@ -45,7 +45,10 @@ func (dao MariaDao) GetTask(idStr string) (*Task, error) {
 	}
 	defer stmt.Close()
 	t := Task{}
-	id, _ := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(idStr)
+	if err != nil{
+		return nil, ErrInvalidInput
+	}
 	row := stmt.QueryRow(id)
 	err = row.Scan(&t.ID, &t.Title, &t.Description, &t.Deadline)
 	if err != nil {
@@ -91,7 +94,10 @@ func (dao MariaDao) DeleteTask(idStr string) error {
 		return err
 	}
 	defer stmt.Close()
-	id, _ := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(idStr)
+	if err != nil{
+		return ErrInvalidInput
+	}
 	_, err = stmt.Exec(id)
 	return err
 }
